@@ -1,0 +1,9 @@
+name: workflow
+channels:
+  - conda-forge
+  - base
+  - R=4.3.0
+  - python
+dependencies:
+  - r-base=4.2.3
+  - r-tidyverse=2.0.0
