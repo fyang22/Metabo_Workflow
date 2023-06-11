@@ -2,8 +2,11 @@ name: workflow
 channels:
   - conda-forge
   - base
+  - bioconda
   - R=4.3.0
   - python
 dependencies:
   - r-base=4.2.3
   - r-tidyverse=2.0.0
+  - snakemake =7.26.0
+  - graphviz=8.0.5
