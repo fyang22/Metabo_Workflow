@@ -1,7 +1,9 @@
 # import necessary libraries
+## TODO: check installation of proteowizard ##
 import sys  # for error handling
 import os  # for file handling
 import subprocess  # for running shell commands
+
 
 # define paths
 raw_data_folder = "data/raw"
