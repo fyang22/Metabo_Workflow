@@ -7,7 +7,7 @@ import pandas as pd
 hmdb = pd.read_csv('data/hmdb.csv')
 
 # load feature table
-feature_table = pd.read_csv('data/sig_feauture.csv')
+data = pd.read_csv('data/sig_feauture.csv')
 
 # calculate monoisotopic mass
 mH = 1.007276
@@ -30,13 +30,12 @@ for index, row in data.interrows():
 
     # concat all the possible chemicals as a table
     hmdb_mass = pd.concat([hmdb_mass]*len(feature_mass), ignore_index=True)
-return hmdb_mass
+    return hmdb_mass
 
 # calculate the mass difference between feature mass and hmdb mass as ppm
 hmdb_mass['delta_mass(ppm)'] = (hmdb_mass['monoisotopic_molecular_weight'] - feature_mass) / feature_mass * 1e6
 
-    
-    
+
 
 
 
