@@ -1,0 +1,81 @@
+from pyopenms import *
+import numpy as np
+import os
+import pymzml
+import matplotlib.pyplot as plt
+import pandas as pd
+
+def extract_ion_chromatogram_pymzml(mzml_file, mz, mz_tol):
+    run = pymzml.run.Reader(mzml_file)
+
+    times = []
+    intensities = []
+
+    for spectrum in run:
+        if spectrum.ms_level == 1:  # process MS1 spectra
+            for i, mz_i in enumerate(spectrum.mz):
+                if mz - mz_tol <= mz_i <= mz + mz_tol:
+                    times.append(spectrum.scan_time[0])
+                    intensities.append(spectrum.i[i])
+
+    return times, intensities
+
+def plot_chromatogram(times, intensities,feature):
+    plt.figure(figsize=(10,5))
+    plt.plot(times, intensities)
+    plt.xlabel("Time [min]")
+    plt.ylabel("Intensity")
+    plt.title(feature)
+    plt.show()
+
+def export_msms(mzml_file, mz, rt, mz_tol, rt_tol,mgf_file,output_file):
+    # Load the mzML file
+    exp = MSExperiment()
+    MzMLFile().load(mzml_file, exp)
+
+    ms2_found = False  # Added this variable to keep track if MS2 is found for a given feature
+
+    # Loop through the spectra in the file
+    for spectrum in exp.getSpectra():
+        # Check if the spectrum is an MS2 spectrum
+        if spectrum.getMSLevel() == 2:
+            # Get the precursor information
+            precursors = spectrum.getPrecursors()
+            if len(precursors) > 0:
+                precursor = precursors[0]
+                precursor_mz = precursor.getMZ()
+                precursor_rt = spectrum.getRT()
+
+                # Check if the precursor matches your m/z and RT (within some tolerance)
+                if np.any(abs(precursor_mz - mz) <= mz_tol) and np.any(abs(precursor_rt - rt) <= rt_tol):
+                    ms2_found = True  # Set the flag to True if MS2 is found
+                    mz, intensity = spectrum.get_peaks()
+                    with open(output_file, 'w') as f:
+                        for m, i in zip(mz, intensity):
+                            m = m.round(4)
+                            f.write(f'{m}\t{i}\n')      
+
+                    # Save the precursor ion and MS/MS in an mgf file
+                    mgf_exp = MSExperiment()
+                    mgf_exp.addSpectrum(spectrum)
+                    MascotGenericFile().store(mgf_file, mgf_exp)  
+    
+    if not ms2_found:  # If no MS2 found for the feature
+        print(f"No MS2 data found for the feature {feature}.")
+
+mz_tol = 0.005  # m/z tolerance (adjust as needed)
+rt_tol = 6  # RT tolerance in seconds (adjust as needed)
+
+# Load the mzML file containing the MS2 spectra
+mzml_file = 'data/raw/Lib4_pos_75_01_16963.mzML'
+output_dir = "data/output"
+
+df = pd.read_csv('data/Compounds_lib4.csv',delimiter=',')
+for index, row in df.iterrows():
+    feature = row['metabolites']
+    mz = row['mz']
+    rt_min = row['rt']
+    rt = rt_min*60
+    output_file = os.path.join(output_dir,f'{feature}.txt')
+    mgf_file = os.path.join(output_dir, f'{feature}.mgf')
+    export_msms(mzml_file, mz, rt, mz_tol, rt_tol, mgf_file, output_file)
