@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 # define paths
-input_file = 'data/volcano/volcano_pos.csv' # change the path and file name as desired
+input_file = 'data/volcano/volcano_neg.csv' # change the path and file name as desired
 
 df_volcano = pd.read_csv(input_file)
 
@@ -17,7 +17,7 @@ print(df_volcano.shape)
 
 # find the common features between volcano and xcms feature table
 # read xcms feature table
-input_xcms_file = 'data/xcms_processed/output_Final-positive.tsv' # change the path and file name as desired
+input_xcms_file = 'data/xcms_processed/output_Final-negative.tsv' # change the path and file name as desired
 df_xcms = pd.read_table(input_xcms_file,
                             delim_whitespace=True,
                             index_col=0)
@@ -32,12 +32,12 @@ df_xcms_filter = df_xcms[df_xcms['Sample'].isin(df_volcano['Sample'])]
 
 # calculate the monoisotopic mass for each feature 
 # use .loc[row_indexer,col_indexer]
-df_xcms_filter['MonoisotopicMass'] = df_xcms_filter.loc[:, 'mzmed'] - 1.007276 # positive mode
+#df_xcms_filter['MonoisotopicMass'] = df_xcms_filter.loc[:, 'mzmed'] - 1.007276 # positive mode
 
-#df_xcms_filter['MonoisotopicMass'] = df_xcms_filter.loc[:, 'mzmed'] + 1.007276 # negative mode
+df_xcms_filter['MonoisotopicMass'] = df_xcms_filter.loc[:, 'mzmed'] + 1.007276 # negative mode
 
 # write df_xcms_filter to csv file
-#df_xcms_filter.to_csv('data/volcano/Feature_SI_pos.csv', index=False)
+#df_xcms_filter.to_csv('data/volcano/Feature_SI_neg.csv', index=False)
 
 
 
@@ -58,11 +58,13 @@ def find_Chem(dataset, databse, mass_tolerance):
     matched_db['Sample'] = ''
     matched_db['Sample_mass'] = ''
     matched_db['Sample_mz'] = ''
+    matched_db['Sample_rt'] = ''
     # create a empty 
     for index, row in dataset.iterrows():
         feature_mass = row['MonoisotopicMass']
         feature_name = row['Sample']
         feature_mz = row['mzmed']
+        feature_rt = row['rtmed']
         # get DB chemicals where the monoisotopic mass in hmdb database with tolerance
         # indicate error if no matched chemicals
         db_mass = databse[(databse['monisotopic_molecular_weight'] >= feature_mass - mass_tolerance) 
@@ -70,7 +72,8 @@ def find_Chem(dataset, databse, mass_tolerance):
             # add feature name to the db_mass
         db_mass['Sample'] = feature_name 
         db_mass['Sample_mass'] = feature_mass
-        db_mass['Sample_mz'] = feature_mz 
+        db_mass['Sample_mz'] = feature_mz
+        db_mass['Sample_rt'] = feature_rt 
         
             # add db_mass to the matched_hmdb
 
@@ -81,8 +84,7 @@ def find_Chem(dataset, databse, mass_tolerance):
     return matched_db
 
 matched_hmdb = find_Chem(df_xcms_filter, hmdb, 0.01)
-print(matched_hmdb.shape)
-print(matched_hmdb.head(5))
+
 
 
 # calculate the mass difference between feature mass and hmdb mass as ppm
@@ -91,10 +93,7 @@ matched_hmdb['delta_mass(ppm)'] = ((matched_hmdb['monisotopic_molecular_weight']
 
 # check delta_mass(ppm) < 5 ppm
 #matched_hmdb_select = matched_hmdb[matched_hmdb['delta_mass(ppm)'] <= 10]
-
-#print(matched_hmdb_select.shape)
-#print(matched_hmdb_select.head(5))
 print(matched_hmdb.shape)
-#print(matched_hmdb.head(5))
-#matched_hmdb.to_csv('data/volcano/match_neg.csv', index=False)
-#matched_hmdb_select.to_csv('data/volcano/match_5ppm_neg.csv', index=False)
+print(matched_hmdb.head(5))
+
+matched_hmdb.to_csv('data/volcano/match_neg.csv', index=False)
