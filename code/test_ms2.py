@@ -27,11 +27,12 @@ def plot_chromatogram(times, intensities,feature, save_dir):
     ax.set_xlabel("Time [s]")
     ax.set_ylabel("Intensity")
     ax.set_title(feature)
-    ax.set_xticks(np.arange(0, max(times), 100))
+    #ax.set_xticks(np.arange(0, max(times), 100))
+    ax.set_xticks(np.arange(0, 1200, 100))
     fig.savefig(os.path.join(save_dir, f'{feature}.png'), dpi=300)
     plt.close(fig)
 
-def export_msms(mzml_file, mz, rt, mz_tol, rt_tol,output_file):
+def export_msms(mzml_file, mz, rt, mz_tol, rt_tol,output_file):#mz_min, mz_max, rt_min, rt_max, output_file):
     # Load the mzML file
     exp = MSExperiment()
     MzMLFile().load(mzml_file, exp)
@@ -44,22 +45,22 @@ def export_msms(mzml_file, mz, rt, mz_tol, rt_tol,output_file):
         # Check if the spectrum is an MS2 spectrum
         if spectrum.getMSLevel() == 2:
             # Get the precursor 
-            precursors = spectrum.getPrecursors()
-            if len(precursors) > 0:
-                precursor = precursors[0]
-                precursor_mz = precursor.getMZ()
-                precursor_rt = spectrum.getRT()
+            precursor = spectrum.getPrecursors()[0]
+            precursor_mz = precursor.getMZ()
+            precursor_rt = spectrum.getRT()
 
                 # Check if the precursor matches m/z and RT 
-                if np.any(abs(precursor_mz - mz) <= mz_tol) and np.any(abs(precursor_rt - rt) <= rt_tol):
-                    ms2_found = True  # Set the flag to True if MS2 is found
-                    peak_mz, intensity = spectrum.get_peaks()
-                    peaks = np.column_stack((peak_mz, intensity))
-                    peaks = peaks[(peaks[:,0] <= mz)]
-                    with open(output_file, 'w') as f:
-                        for m, i in peaks:
-                            m = m.round(4)
-                            f.write(f'{m}\t{i}\n')      
+            if np.any(abs(precursor_mz - mz) <= mz_tol) and np.any(abs(precursor_rt - rt) <= rt_tol):
+                ms2_found = True  # Set the flag to True if MS2 is found
+                peak_mz, intensity = spectrum.get_peaks()
+                peaks = np.column_stack((peak_mz, intensity))
+                peaks = peaks[(peaks[:,0] <= mz)]
+                peaks = peaks[peaks[:,1].argsort()[::-1]]
+                peaks = peaks[:10]
+                with open(output_file, 'w') as f:
+                    for m, i in peaks:
+                        m = m.round(4)
+                        f.write(f'{m}\t{i}\n')      
     if not ms2_found:
         print(f"No MS2 data found for the feature {feature}.")
 
@@ -68,20 +69,25 @@ def export_msms(mzml_file, mz, rt, mz_tol, rt_tol,output_file):
                     # mgf_exp.addSpectrum(spectrum)
                     # MascotGenericFile().store(mgf_file, mgf_exp)  
    
-mz_tol = 0.005  # m/z tolerance (adjust as needed)
-rt_tol = 6  # RT tolerance in seconds (adjust as needed)
+mz_tol = 0.005  # m/z tolerance Da TODO: use mz_min and mz_max from the feature table same for rt
+rt_tol = 6  # RT tolerance in seconds 
 
 # Load the mzML file containing the MS2 spectra
 mzml_file = glob.glob('data/raw/*.mzML')
-output_dir = "data/output"
-save_dir = "data/chromatogram"
+output_dir = "data/output_neg"
+save_dir = "data/chromatogram_neg"
+df = pd.read_csv('data/Feature/CompoundList_neg.csv',delimiter=',')
 
-df = pd.read_csv('data/Feature/CompoundList.csv',delimiter=',')
 for file in mzml_file:
     print('Loadfile: ', file)
     for index, row in df.iterrows():
         feature = row['Sample']
-        mz = row['Sample_mz']
+        mz = row['Sample_mz'] 
+        # mz_min = row['Sample_mz_min']
+        # mz_max = row['Sample_mz_max']
+        # rt_min = row['Sample_rt_min']
+        # rt_max = row['Sample_rt_max']    
+        # replace with mz_min and mz_max from the feature table
         rt = row['Sample_rt']
         file_name = row['Sample_max']
         if file_name == os.path.basename(file)[:-5]: # map the file with sample_max
